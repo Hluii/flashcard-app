@@ -5,41 +5,103 @@ import flashcardsData from './data/flashcards.json';
 import styles from './App.module.css';
 
 function App() {
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const filteredCards = selectedCategory === 'all'
-    ? flashcardsData
-    : flashcardsData.filter(card => card.category === selectedCategory);
-
+  const [cards, setCards] = useState([...flashcardsData]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [userAnswer, setUserAnswer] = useState('');
+  const [feedback, setFeedback] = useState(null);
+  const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [mastered, setMastered] = useState([]);
 
-  const getRandomCard = () => {
-    let newIndex = Math.floor(Math.random() * filteredCards.length);
-    while (newIndex === currentIndex && filteredCards.length > 1) {
-      newIndex = Math.floor(Math.random() * filteredCards.length);
+  const currentCard = cards[currentIndex];
+
+  const handleAnswerSubmit = () => {
+    const normalizedInput = userAnswer.trim().toLowerCase();
+    const normalizedAnswer = currentCard.answer.trim().toLowerCase();
+    const isCorrect = normalizedAnswer.includes(normalizedInput);
+
+    if (isCorrect) {
+      setFeedback('correct');
+      const newStreak = streak + 1;
+      setStreak(newStreak);
+      if (newStreak > bestStreak) setBestStreak(newStreak);
+    } else {
+      setFeedback('incorrect');
+      setStreak(0);
     }
-    setCurrentIndex(newIndex);
   };
 
-  const handleCategoryChange = (event) => {
-    setSelectedCategory(event.target.value);
+  const goToNextCard = () => {
+    if (currentIndex < cards.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setUserAnswer('');
+      setFeedback(null);
+    }
+  };
+
+  const goToPreviousCard = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+      setUserAnswer('');
+      setFeedback(null);
+    }
+  };
+
+  const shuffleCards = () => {
+    const shuffled = [...cards].sort(() => Math.random() - 0.5);
+    setCards(shuffled);
     setCurrentIndex(0);
+    setUserAnswer('');
+    setFeedback(null);
+  };
+
+  const markAsMastered = () => {
+    const updatedMastered = [...mastered, currentCard];
+    const remaining = cards.filter((_, i) => i !== currentIndex);
+    setMastered(updatedMastered);
+    setCards(remaining);
+    setCurrentIndex(0);
+    setUserAnswer('');
+    setFeedback(null);
   };
 
   return (
     <div className={styles.appContainer}>
-      <Header title="Flashcard Practice" description="Practice your knowledge across subjects" total={filteredCards.length} />
+      <Header
+        title="Flashcard Mastery"
+        description="Practice your knowledge across subjects"
+        total={cards.length}
+      />
 
-      <select onChange={handleCategoryChange} value={selectedCategory} className={styles.dropdown}>
-        <option value="all">All</option>
-        <option value="science">Science</option>
-        <option value="history">History</option>
-        <option value="math">Math</option>
-        <option value="geography">Geography</option>
-        <option value="literature">Literature</option>
-      </select>
+      <Flashcard card={currentCard} />
 
-      <Flashcard card={filteredCards[currentIndex]} />
-      <button onClick={getRandomCard}>Next Card</button>
+      <input
+        type="text"
+        placeholder="Type your answer..."
+        value={userAnswer}
+        onChange={(e) => setUserAnswer(e.target.value)}
+        className={styles.inputBox}
+      />
+      <button onClick={handleAnswerSubmit}>Submit</button>
+      {feedback && (
+        <p className={feedback === 'correct' ? styles.correct : styles.incorrect}>
+          {feedback === 'correct' ? 'Correct!' : 'Incorrect. Try again!'}
+        </p>
+      )}
+
+      <div className={styles.navigation}>
+        <button onClick={goToPreviousCard} disabled={currentIndex === 0}>
+          Previous
+        </button>
+        <button onClick={goToNextCard} disabled={currentIndex === cards.length - 1}>
+          Next
+        </button>
+      </div>
+
+      <button onClick={shuffleCards}>Shuffle</button>
+      <button onClick={markAsMastered}>Mark as Mastered</button>
+
+      <p>Streak: {streak} | Best: {bestStreak}</p>
     </div>
   );
 }
